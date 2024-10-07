@@ -123,9 +123,6 @@
 
 
 
-
-
-
 import streamlit as st
 import pickle
 import tensorflow as tf
@@ -140,13 +137,6 @@ IMAGE_SIZE = 256
 class_names = {0: "Early Blight", 1: "Late Blight", 2: "Healthy"}
 
 # Function to load and preprocess the uploaded image
-# def load_and_preprocess_image(image):
-#     img = load_img(image, target_size=(IMAGE_SIZE, IMAGE_SIZE))
-#     img_array = img_to_array(img)
-#     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
-#     img_array = img_array / 255.0  # Normalize to [0, 1]
-#     return img_array
-
 def load_and_preprocess_image(image, model_type):
     img = load_img(image, target_size=(IMAGE_SIZE, IMAGE_SIZE))
     img_array = img_to_array(img)
@@ -158,14 +148,12 @@ def load_and_preprocess_image(image, model_type):
 
     return img_array
 
-
 # Function to predict the class and confidence score
 def predict(model, img_array, model_type):
     if model_type == "CNN":
         predictions = model.predict(img_array)
     else:
-        img_array_flat = img_array.flatten().reshape(1, -1)  # Flatten for KNN/SVM models
-        predictions = model.predict_proba(img_array_flat)  # Use predict_proba for KNN/SVM to get probabilities
+        predictions = model.predict_proba(img_array)  # Use predict_proba for KNN/SVM to get probabilities
 
     predicted_class = class_names[np.argmax(predictions[0])]
     confidence = round(100 * np.max(predictions[0]), 2)  # Convert confidence to percentage and round
@@ -176,15 +164,20 @@ def load_model(model_choice):
     if model_choice == "KNN":
         with open("knn_model.pkl", "rb") as f:
             model = pickle.load(f)
+        with open("knn_scaler.pkl", "rb") as f:  # Load KNN scaler
+            scaler = pickle.load(f)
     elif model_choice == "SVM":
         with open("svm_model.pkl", "rb") as f:
             model = pickle.load(f)
+        with open("svm_scaler.pkl", "rb") as f:  # Load SVM scaler
+            scaler = pickle.load(f)
     elif model_choice == "CNN":
         with open("potato_pickle_final (1).pkl", "rb") as f:
             data = pickle.load(f)
             model = tf.keras.models.model_from_json(data["architecture"])
             model.load_weights(data["weights"])
-    return model
+        scaler = None  # No scaler for CNN
+    return model, scaler
 
 # Enhanced UI
 st.markdown("<h1 style='text-align: center; color: green;'>🍃 Potato Leaf Health Check 🍃</h1>", unsafe_allow_html=True)
@@ -198,31 +191,20 @@ model_choice = st.selectbox("Choose a model for prediction", ["KNN", "SVM", "CNN
 
 # If an image is uploaded and model is selected
 if uploaded_file is not None and model_choice is not None:
-    # Load the selected model
-    model = load_model(model_choice)
+    # Load the selected model and scaler
+    model, scaler = load_model(model_choice)
 
     # Load and preprocess the uploaded image
     img = Image.open(uploaded_file).convert('RGB')
     st.image(img, caption="Uploaded Image", use_column_width=True)
     
-    # img_array = load_and_preprocess_image(uploaded_file)
     # Load and preprocess the uploaded image
     img_array = load_and_preprocess_image(uploaded_file, model_choice)
 
-        # Flatten the image array for KNN or SVM
-    img_flattened = img_array.flatten().reshape(1, -1)  # Reshape for KNN/SVM
+    # Scale the image array for KNN/SVM models
+    if model_choice in ["KNN", "SVM"]:
+        img_array = scaler.transform(img_array)  # Scale using the loaded scaler
 
-    # Scale the features using the pre-fitted scaler
-    if model_choice == "svm_model.pkl":  # Adjust this according to your actual model names
-        img_scaled = scaler.transform(img_flattened)  # Scale if using SVM
-
-    # Generate predictions
-    if model_choice == "knn_model.pkl":
-        predictions = knn_model.predict(img_flattened)
-    elif model_choice == "svm_model.pkl":
-        predictions = svm_model.predict(img_scaled)
-
-    
     # Predict the class of the leaf disease using the selected model
     predicted_class, confidence = predict(model, img_array, model_choice)
 
@@ -238,11 +220,6 @@ if uploaded_file is not None and model_choice is not None:
         st.write("⚠️ Late Blight detected. Immediate attention is required, use disease-resistant potato varieties.")
     elif predicted_class == "Healthy":
         st.write("✅ Your leaf is healthy! Keep up the good farming practices.")
-    
-    # Optional: Display a pie chart with prediction probabilities
-    # st.write("### 🔢 Prediction Probabilities:")
-    # prob_df = {class_names[i]: float(predictions[0][i]) * 100 for i in range(len(class_names))}
-    # st.bar_chart(prob_df)
 
 # Sidebar enhancements
 st.sidebar.title("About the Disease Classifier")
@@ -255,6 +232,10 @@ st.sidebar.write("🌱 **Healthy:** No signs of disease detected.")
 
 st.sidebar.subheader("How It Works")
 st.sidebar.write("Upload a clear image of your potato leaf, and our AI will predict its health based on trained models.")
+
+
+
+
 
 
 
