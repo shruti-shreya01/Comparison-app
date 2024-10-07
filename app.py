@@ -136,7 +136,7 @@ from sklearn.preprocessing import StandardScaler
 knn_model = pickle.load(open('knn_model.pkl', 'rb'))
 svm_model = pickle.load(open('svm_model.pkl', 'rb'))
 # Assuming you have a scaler saved
-scaler = pickle.load(open('scaler.pkl', 'rb'))
+
 
 def preprocess_image(uploaded_file):
     # This function preprocesses the uploaded image
