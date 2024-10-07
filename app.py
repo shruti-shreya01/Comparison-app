@@ -99,9 +99,9 @@ if uploaded_file is not None and model_choice is not None:
         st.write("✅ Your leaf is healthy! Keep up the good farming practices.")
     
     # Optional: Display a pie chart with prediction probabilities
-    st.write("### 🔢 Prediction Probabilities:")
-    prob_df = {class_names[i]: float(predictions[0][i]) * 100 for i in range(len(class_names))}
-    st.bar_chart(prob_df)
+    # st.write("### 🔢 Prediction Probabilities:")
+    # prob_df = {class_names[i]: float(predictions[0][i]) * 100 for i in range(len(class_names))}
+    # st.bar_chart(prob_df)
 
 # Sidebar enhancements
 st.sidebar.title("About the Disease Classifier")
