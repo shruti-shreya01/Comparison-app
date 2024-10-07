@@ -204,20 +204,36 @@ model_choice = st.selectbox("Choose a model for prediction", ["KNN", "SVM", "CNN
 # If an image is uploaded and model is selected
 if uploaded_file is not None and model_choice is not None:
     # Load the selected model
-    model = load_model(model_choice)
+    # model = load_model(model_choice)
 
+    # # Load and preprocess the uploaded image
+    # img = Image.open(uploaded_file).convert('RGB')
+    # st.image(img, caption="Uploaded Image", use_column_width=True)
+    
+    # # img_array = load_and_preprocess_image(uploaded_file)
+    # # Load and preprocess the uploaded image
+    # img_array = load_and_preprocess_image(uploaded_file, model_choice)
+
+    
+    # # Predict the class of the leaf disease using the selected model
+    # predicted_class, confidence = predict(model, img_array, model_choice)
     # Load and preprocess the uploaded image
     img = Image.open(uploaded_file).convert('RGB')
+    img = img.resize((image_height, image_width))  # Resize as per your model's input
+    img_array = np.array(img) / 255.0  # Normalize the image
+    img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
     st.image(img, caption="Uploaded Image", use_column_width=True)
-    
-    # img_array = load_and_preprocess_image(uploaded_file)
-    # Load and preprocess the uploaded image
-    img_array = load_and_preprocess_image(uploaded_file, model_choice)
-
-    
-    # Predict the class of the leaf disease using the selected model
     predicted_class, confidence = predict(model, img_array, model_choice)
+    # Generate predictions
+    predictions = model.predict(img_array)
 
+    # Ensure predictions are made
+    if predictions is not None:
+        st.write("### 🔢 Prediction Probabilities:")
+        prob_df = {class_names[i]: float(predictions[0][i]) * 100 for i in range(len(class_names))}
+        st.bar_chart(prob_df)
+    else:
+        st.write("No predictions were generated.")
     # Display the predicted class and confidence score
     st.markdown(f"### 🌿 Predicted Disease: **{predicted_class}**")
     st.write(f"Confidence Score: **{confidence:.2f}%**")
@@ -231,10 +247,7 @@ if uploaded_file is not None and model_choice is not None:
     elif predicted_class == "Healthy":
         st.write("✅ Your leaf is healthy! Keep up the good farming practices.")
     
-    # Optional: Display a pie chart with prediction probabilities
-    st.write("### 🔢 Prediction Probabilities:")
-    prob_df = {class_names[i]: float(predictions[0][i]) * 100 for i in range(len(class_names))}
-    st.bar_chart(prob_df)
+
 
 # Sidebar enhancements
 st.sidebar.title("About the Disease Classifier")
