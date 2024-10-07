@@ -382,7 +382,6 @@ IMAGE_SIZE_OTHER = 90  # Size for KNN and SVM models
 # Class names for the three conditions
 class_names = {0: "Early Blight", 1: "Late Blight", 2: "Healthy"}
 
-# Function to load and preprocess the uploaded image
 def load_and_preprocess_image(image, model_type, expected_features):
     if model_type == "CNN":
         img = load_img(image, target_size=(IMAGE_SIZE_CNN, IMAGE_SIZE_CNN))
@@ -395,15 +394,14 @@ def load_and_preprocess_image(image, model_type, expected_features):
         img_array = resize(img_array, (IMAGE_SIZE_OTHER, IMAGE_SIZE_OTHER, 3))
         img_array = img_array.flatten().reshape(1, -1)
         
-        # Adjust the number of features based on the model's expectation
-        if img_array.shape[1] > expected_features:
-            img_array = img_array[:, :expected_features]
-        elif img_array.shape[1] < expected_features:
-            img_array = np.pad(img_array, ((0, 0), (0, expected_features - img_array.shape[1])), 'constant')
+        # Always prepare 8100 features for KNN and SVM
+        if img_array.shape[1] > 8100:
+            img_array = img_array[:, :8100]
+        elif img_array.shape[1] < 8100:
+            img_array = np.pad(img_array, ((0, 0), (0, 8100 - img_array.shape[1])), 'constant')
 
     return img_array
 
-# Function to predict the class and confidence score
 def predict(model, img_array, model_type):
     if model_type == "CNN":
         predictions = model.predict(img_array)
@@ -414,30 +412,25 @@ def predict(model, img_array, model_type):
     confidence = round(100 * np.max(predictions[0]), 2)
     return predicted_class, confidence
 
-# Function to load the selected model and get expected features
 def load_model(model_choice):
     if model_choice == "KNN":
         with open("knn_model.pkl", "rb") as f:
             model = pickle.load(f)
         with open("knn_scaler.pkl", "rb") as f:
             scaler = pickle.load(f)
-        expected_features = model.n_features_in_
     elif model_choice == "SVM":
         with open("svm_model.pkl", "rb") as f:
             model = pickle.load(f)
         with open("svm_scaler.pkl", "rb") as f:
             scaler = pickle.load(f)
-        expected_features = model.n_features_in_
     elif model_choice == "CNN":
         with open("potato_pickle_final (1).pkl", "rb") as f:
             data = pickle.load(f)
             model = tf.keras.models.model_from_json(data["architecture"])
             model.load_weights(data["weights"])
         scaler = None
-        expected_features = None  # Not applicable for CNN
-    return model, scaler, expected_features
+    return model, scaler
 
-# UI Setup
 st.markdown("<h1 style='text-align: center; color: green;'>🍃 Potato Leaf Health Check 🍃</h1>", unsafe_allow_html=True)
 st.write("Welcome farmers! Upload a photo of your potato leaf and let our AI help you diagnose its health.")
 
@@ -445,15 +438,21 @@ uploaded_file = st.file_uploader("Select an image of a potato leaf...", type=["j
 model_choice = st.selectbox("Choose a model for prediction", ["KNN", "SVM", "CNN"])
 
 if uploaded_file is not None and model_choice is not None:
-    model, scaler, expected_features = load_model(model_choice)
+    model, scaler = load_model(model_choice)
 
     img = Image.open(uploaded_file).convert('RGB')
     st.image(img, caption="Uploaded Image", use_column_width=True)
     
-    img_array = load_and_preprocess_image(uploaded_file, model_choice, expected_features)
+    img_array = load_and_preprocess_image(uploaded_file, model_choice, None)
 
     if model_choice in ["KNN", "SVM"]:
         img_array = scaler.transform(img_array)
+        if model_choice == "SVM":
+            # Adjust features for SVM model if necessary
+            if model.n_features_in_ < img_array.shape[1]:
+                img_array = img_array[:, :model.n_features_in_]
+            elif model.n_features_in_ > img_array.shape[1]:
+                img_array = np.pad(img_array, ((0, 0), (0, model.n_features_in_ - img_array.shape[1])), 'constant')
 
     predicted_class, confidence = predict(model, img_array, model_choice)
 
@@ -468,7 +467,6 @@ if uploaded_file is not None and model_choice is not None:
     elif predicted_class == "Healthy":
         st.write("✅ Your leaf is healthy! Keep up the good farming practices.")
 
-# Sidebar information
 st.sidebar.title("About the Disease Classifier")
 st.sidebar.info("This tool uses AI to detect common diseases in potato leaves. It's designed to help farmers identify potential issues early.")
 
