@@ -126,25 +126,25 @@
 import streamlit as st
 import pickle
 import tensorflow as tf
-import os
 from tensorflow.keras.preprocessing.image import img_to_array, load_img
 from PIL import Image
 import numpy as np
 
-IMAGE_SIZE = 90  # Update this to the size that matches your scaler's training (8100 features => 90x90)
+# Set the IMAGE_SIZE based on your model's training
+IMAGE_SIZE = 90  # 90x90 for a total of 8100 features
 
 # Class names for the three conditions
 class_names = {0: "Early Blight", 1: "Late Blight", 2: "Healthy"}
 
 # Function to load and preprocess the uploaded image
 def load_and_preprocess_image(image, model_type):
-    img = load_img(image, target_size=(IMAGE_SIZE, IMAGE_SIZE))  # Resize to match scaler's expected input size
+    img = load_img(image, target_size=(IMAGE_SIZE, IMAGE_SIZE))  # Resize to match the scaler's expected input size
     img_array = img_to_array(img)
     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
     img_array = img_array / 255.0  # Normalize to [0, 1]
-    
+
     if model_type != "CNN":  # Flatten for KNN/SVM models
-        img_array = img_array.flatten().reshape(1, -1)  # Reshape to 1 sample with flattened image
+        img_array = img_array.reshape(1, -1)  # Reshape to match the scaler's expected input shape
 
     return img_array
 
@@ -232,17 +232,6 @@ st.sidebar.write("🌱 **Healthy:** No signs of disease detected.")
 
 st.sidebar.subheader("How It Works")
 st.sidebar.write("Upload a clear image of your potato leaf, and our AI will predict its health based on trained models.")
-
-
-
-
-
-
-
-
-
-
-
 
 
 
