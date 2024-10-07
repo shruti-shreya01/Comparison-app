@@ -131,14 +131,14 @@ from tensorflow.keras.preprocessing.image import img_to_array, load_img
 from PIL import Image
 import numpy as np
 
-IMAGE_SIZE = 256
+IMAGE_SIZE = 90  # Update this to the size that matches your scaler's training (8100 features => 90x90)
 
 # Class names for the three conditions
 class_names = {0: "Early Blight", 1: "Late Blight", 2: "Healthy"}
 
 # Function to load and preprocess the uploaded image
 def load_and_preprocess_image(image, model_type):
-    img = load_img(image, target_size=(IMAGE_SIZE, IMAGE_SIZE))
+    img = load_img(image, target_size=(IMAGE_SIZE, IMAGE_SIZE))  # Resize to match scaler's expected input size
     img_array = img_to_array(img)
     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
     img_array = img_array / 255.0  # Normalize to [0, 1]
