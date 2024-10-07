@@ -103,13 +103,3 @@ st.sidebar.write("Upload a clear image of your potato leaf, and our AI will pred
 
 
 
-
-
-
-
-
-
-    # Display the results
-    st.write(f"Predicted Disease: **{disease_name}**")
-    st.write(f"Confidence Score: **{confidence:.2f}**")
-
