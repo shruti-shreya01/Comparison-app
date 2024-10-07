@@ -261,7 +261,10 @@ class_names = {0: "Early Blight", 1: "Late Blight", 2: "Healthy"}
 
 # Load the StandardScaler for KNN and SVM models
 scaler = None
-with open("scaler.pkl", "rb") as f:
+with open("knn_scaler.pkl", "rb") as f:
+    scaler = pickle.load(f)
+
+with open("svm_scaler.pkl", "rb") as f:
     scaler = pickle.load(f)
 
 # Function to load and preprocess the uploaded image
