@@ -12,12 +12,24 @@ IMAGE_SIZE = 256
 class_names = {0: "Early Blight", 1: "Late Blight", 2: "Healthy"}
 
 # Function to load and preprocess the uploaded image
-def load_and_preprocess_image(image):
+# def load_and_preprocess_image(image):
+#     img = load_img(image, target_size=(IMAGE_SIZE, IMAGE_SIZE))
+#     img_array = img_to_array(img)
+#     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
+#     img_array = img_array / 255.0  # Normalize to [0, 1]
+#     return img_array
+
+def load_and_preprocess_image(image, model_type):
     img = load_img(image, target_size=(IMAGE_SIZE, IMAGE_SIZE))
     img_array = img_to_array(img)
     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
     img_array = img_array / 255.0  # Normalize to [0, 1]
+    
+    if model_type != "CNN":  # Flatten for KNN/SVM models
+        img_array = img_array.flatten().reshape(1, -1)  # Reshape to 1 sample with flattened image
+
     return img_array
+
 
 # Function to predict the class and confidence score
 def predict(model, img_array, model_type):
@@ -65,7 +77,10 @@ if uploaded_file is not None and model_choice is not None:
     img = Image.open(uploaded_file).convert('RGB')
     st.image(img, caption="Uploaded Image", use_column_width=True)
     
-    img_array = load_and_preprocess_image(uploaded_file)
+    # img_array = load_and_preprocess_image(uploaded_file)
+    # Load and preprocess the uploaded image
+    img_array = load_and_preprocess_image(uploaded_file, model_choice)
+
     
     # Predict the class of the leaf disease using the selected model
     predicted_class, confidence = predict(model, img_array, model_choice)
