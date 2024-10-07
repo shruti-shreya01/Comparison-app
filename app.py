@@ -365,6 +365,126 @@
 
 
 
+# knn, cnn and svm but same result for all
+
+# import streamlit as st
+# import pickle
+# import tensorflow as tf
+# import numpy as np
+# from tensorflow.keras.preprocessing.image import img_to_array, load_img
+# from PIL import Image
+# from skimage.transform import resize
+
+# # Set the IMAGE_SIZE based on your model's training
+# IMAGE_SIZE_CNN = 256  # Size for CNN model
+# IMAGE_SIZE_OTHER = 90  # Size for KNN and SVM models
+
+# # Class names for the three conditions
+# class_names = {0: "Early Blight", 1: "Late Blight", 2: "Healthy"}
+
+# def load_and_preprocess_image(image, model_type, expected_features):
+#     if model_type == "CNN":
+#         img = load_img(image, target_size=(IMAGE_SIZE_CNN, IMAGE_SIZE_CNN))
+#         img_array = img_to_array(img)
+#         img_array = np.expand_dims(img_array, axis=0)
+#         img_array = img_array / 255.0
+#     else:
+#         img = Image.open(image).convert('RGB')
+#         img_array = np.array(img)
+#         img_array = resize(img_array, (IMAGE_SIZE_OTHER, IMAGE_SIZE_OTHER, 3))
+#         img_array = img_array.flatten().reshape(1, -1)
+        
+#         # Always prepare 8100 features for KNN and SVM
+#         if img_array.shape[1] > 8100:
+#             img_array = img_array[:, :8100]
+#         elif img_array.shape[1] < 8100:
+#             img_array = np.pad(img_array, ((0, 0), (0, 8100 - img_array.shape[1])), 'constant')
+
+#     return img_array
+
+# def predict(model, img_array, model_type):
+#     if model_type == "CNN":
+#         predictions = model.predict(img_array)
+#     else:
+#         predictions = model.predict_proba(img_array)
+
+#     predicted_class = class_names[np.argmax(predictions[0])]
+#     confidence = round(100 * np.max(predictions[0]), 2)
+#     return predicted_class, confidence
+
+# def load_model(model_choice):
+#     if model_choice == "KNN":
+#         with open("knn_model.pkl", "rb") as f:
+#             model = pickle.load(f)
+#         with open("knn_scaler.pkl", "rb") as f:
+#             scaler = pickle.load(f)
+#     elif model_choice == "SVM":
+#         with open("svm_model.pkl", "rb") as f:
+#             model = pickle.load(f)
+#         with open("svm_scaler.pkl", "rb") as f:
+#             scaler = pickle.load(f)
+#     elif model_choice == "CNN":
+#         with open("potato_pickle_final (1).pkl", "rb") as f:
+#             data = pickle.load(f)
+#             model = tf.keras.models.model_from_json(data["architecture"])
+#             model.load_weights(data["weights"])
+#         scaler = None
+#     return model, scaler
+
+# st.markdown("<h1 style='text-align: center; color: green;'>🍃 Potato Leaf Health Check 🍃</h1>", unsafe_allow_html=True)
+# st.write("Welcome farmers! Upload a photo of your potato leaf and let our AI help you diagnose its health.")
+
+# uploaded_file = st.file_uploader("Select an image of a potato leaf...", type=["jpg", "jpeg", "png"])
+# model_choice = st.selectbox("Choose a model for prediction", ["KNN", "SVM", "CNN"])
+
+# if uploaded_file is not None and model_choice is not None:
+#     model, scaler = load_model(model_choice)
+
+#     img = Image.open(uploaded_file).convert('RGB')
+#     st.image(img, caption="Uploaded Image", use_column_width=True)
+    
+#     img_array = load_and_preprocess_image(uploaded_file, model_choice, None)
+
+#     if model_choice in ["KNN", "SVM"]:
+#         img_array = scaler.transform(img_array)
+#         if model_choice == "SVM":
+#             # Adjust features for SVM model if necessary
+#             if model.n_features_in_ < img_array.shape[1]:
+#                 img_array = img_array[:, :model.n_features_in_]
+#             elif model.n_features_in_ > img_array.shape[1]:
+#                 img_array = np.pad(img_array, ((0, 0), (0, model.n_features_in_ - img_array.shape[1])), 'constant')
+
+#     predicted_class, confidence = predict(model, img_array, model_choice)
+
+#     st.markdown(f"### 🌿 Predicted Disease: **{predicted_class}**")
+#     st.write(f"Confidence Score: **{confidence:.2f}%**")
+
+#     st.markdown("#### 🛠 Tips:")
+#     if predicted_class == "Early Blight":
+#         st.write("⚠️ Early Blight detected. Consider using fungicides and practicing crop rotation.")
+#     elif predicted_class == "Late Blight":
+#         st.write("⚠️ Late Blight detected. Immediate attention is required; use disease-resistant potato varieties.")
+#     elif predicted_class == "Healthy":
+#         st.write("✅ Your leaf is healthy! Keep up the good farming practices.")
+
+# st.sidebar.title("About the Disease Classifier")
+# st.sidebar.info("This tool uses AI to detect common diseases in potato leaves. It's designed to help farmers identify potential issues early.")
+
+# st.sidebar.subheader("Disease Types")
+# st.sidebar.write("🌱 **Early Blight:** A common potato disease caused by a fungus.")
+# st.sidebar.write("🌱 **Late Blight:** A serious disease that can devastate potato crops.")
+# st.sidebar.write("🌱 **Healthy:** No signs of disease detected.")
+
+# st.sidebar.subheader("How It Works")
+# st.sidebar.write("Upload a clear image of your potato leaf, and our AI will predict its health based on trained models.")
+
+
+
+
+
+
+
+
 
 
 import streamlit as st
@@ -377,29 +497,23 @@ from skimage.transform import resize
 
 # Set the IMAGE_SIZE based on your model's training
 IMAGE_SIZE_CNN = 256  # Size for CNN model
-IMAGE_SIZE_OTHER = 90  # Size for KNN and SVM models
+IMAGE_SIZE_OTHER = 256  # Size for KNN and SVM models (adjust if necessary)
 
 # Class names for the three conditions
 class_names = {0: "Early Blight", 1: "Late Blight", 2: "Healthy"}
 
-def load_and_preprocess_image(image, model_type, expected_features):
+def load_and_preprocess_image(image, model_type):
     if model_type == "CNN":
         img = load_img(image, target_size=(IMAGE_SIZE_CNN, IMAGE_SIZE_CNN))
         img_array = img_to_array(img)
         img_array = np.expand_dims(img_array, axis=0)
         img_array = img_array / 255.0
-    else:
+    else:  # KNN or SVM
         img = Image.open(image).convert('RGB')
+        img = img.resize((IMAGE_SIZE_OTHER, IMAGE_SIZE_OTHER))
         img_array = np.array(img)
-        img_array = resize(img_array, (IMAGE_SIZE_OTHER, IMAGE_SIZE_OTHER, 3))
         img_array = img_array.flatten().reshape(1, -1)
-        
-        # Always prepare 8100 features for KNN and SVM
-        if img_array.shape[1] > 8100:
-            img_array = img_array[:, :8100]
-        elif img_array.shape[1] < 8100:
-            img_array = np.pad(img_array, ((0, 0), (0, 8100 - img_array.shape[1])), 'constant')
-
+    
     return img_array
 
 def predict(model, img_array, model_type):
@@ -416,18 +530,13 @@ def load_model(model_choice):
     if model_choice == "KNN":
         with open("knn_model.pkl", "rb") as f:
             model = pickle.load(f)
-        with open("knn_scaler.pkl", "rb") as f:
-            scaler = pickle.load(f)
+        scaler = None  # Remove scaler if not used in original training
     elif model_choice == "SVM":
         with open("svm_model.pkl", "rb") as f:
             model = pickle.load(f)
-        with open("svm_scaler.pkl", "rb") as f:
-            scaler = pickle.load(f)
+        scaler = None  # Remove scaler if not used in original training
     elif model_choice == "CNN":
-        with open("potato_pickle_final (1).pkl", "rb") as f:
-            data = pickle.load(f)
-            model = tf.keras.models.model_from_json(data["architecture"])
-            model.load_weights(data["weights"])
+        model = tf.keras.models.load_model("cnn_model.h5")  # Load the entire model
         scaler = None
     return model, scaler
 
@@ -443,16 +552,11 @@ if uploaded_file is not None and model_choice is not None:
     img = Image.open(uploaded_file).convert('RGB')
     st.image(img, caption="Uploaded Image", use_column_width=True)
     
-    img_array = load_and_preprocess_image(uploaded_file, model_choice, None)
+    img_array = load_and_preprocess_image(uploaded_file, model_choice)
 
-    if model_choice in ["KNN", "SVM"]:
-        img_array = scaler.transform(img_array)
-        if model_choice == "SVM":
-            # Adjust features for SVM model if necessary
-            if model.n_features_in_ < img_array.shape[1]:
-                img_array = img_array[:, :model.n_features_in_]
-            elif model.n_features_in_ > img_array.shape[1]:
-                img_array = np.pad(img_array, ((0, 0), (0, model.n_features_in_ - img_array.shape[1])), 'constant')
+    # Remove scaling step if not used in original training
+    # if model_choice in ["KNN", "SVM"] and scaler is not None:
+    #     img_array = scaler.transform(img_array)
 
     predicted_class, confidence = predict(model, img_array, model_choice)
 
