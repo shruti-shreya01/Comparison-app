@@ -378,7 +378,7 @@ from sklearn.preprocessing import StandardScaler
 # Set the IMAGE_SIZE based on your model's training
 IMAGE_SIZE_CNN = 256  # Size for CNN model
 IMAGE_SIZE_KNN = 90   # Size for KNN model
-IMAGE_SIZE_SVM = 10   # Size for SVM model (adjusted to match 70 features)
+IMAGE_SIZE_SVM = 90   # Size for SVM model (adjusted to match 8100 features)
 
 # Class names for the three conditions
 class_names = {0: "Early Blight", 1: "Late Blight", 2: "Healthy"}
