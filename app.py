@@ -376,8 +376,7 @@ from PIL import Image
 
 # Set the IMAGE_SIZE based on your model's training
 IMAGE_SIZE_CNN = 256  # Size for CNN model
-IMAGE_SIZE_KNN = 90  # Size for KNN model
-IMAGE_SIZE_SVM = 70  # Size for SVM model (adjusted for 70 features)
+IMAGE_SIZE_OTHER = 90  # Size for KNN and SVM models (produces 8100 features)
 
 # Class names for the three conditions
 class_names = {0: "Early Blight", 1: "Late Blight", 2: "Healthy"}
@@ -386,18 +385,16 @@ class_names = {0: "Early Blight", 1: "Late Blight", 2: "Healthy"}
 def load_and_preprocess_image(image, model_type):
     if model_type == "CNN":
         img = load_img(image, target_size=(IMAGE_SIZE_CNN, IMAGE_SIZE_CNN))  # Resize for CNN
-    elif model_type == "KNN":
-        img = load_img(image, target_size=(IMAGE_SIZE_KNN, IMAGE_SIZE_KNN))  # Resize for KNN
-    else:  # SVM
-        img = load_img(image, target_size=(IMAGE_SIZE_SVM, IMAGE_SIZE_SVM))  # Resize for SVM
-
+    else:
+        img = load_img(image, target_size=(IMAGE_SIZE_OTHER, IMAGE_SIZE_OTHER))  # Resize for KNN/SVM (90x90)
     img_array = img_to_array(img)
     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
     img_array = img_array / 255.0  # Normalize to [0, 1]
 
-    if model_type in ["KNN", "SVM"]:  # Flatten for KNN/SVM models
+    if model_type != "CNN":  # Flatten for KNN/SVM models
         img_array = img_array.flatten().reshape(1, -1)  # Reshape to 1 sample with flattened image
-    
+        img_array = img_array[:, :8100]  # Keep only the first 8100 features for KNN/SVM
+
     return img_array
 
 # Function to predict the class and confidence score
