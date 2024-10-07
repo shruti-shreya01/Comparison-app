@@ -375,33 +375,61 @@ from PIL import Image
 import numpy as np
 
 # Set the IMAGE_SIZE based on your model's training
-IMAGE_SIZE = 90  # Adjust this as per your model's training
+IMAGE_SIZE_CNN = 256  # Size for CNN
+IMAGE_SIZE_SVM = 70   # Size for SVM
+IMAGE_SIZE_KNN = 90   # Size for KNN
 
 # Class names for the three conditions
 class_names = {0: "Early Blight", 1: "Late Blight", 2: "Healthy"}
 
-# Function to load and preprocess the uploaded image for SVM
-def load_and_preprocess_image_svm(image):
-    img = load_img(image, target_size=(IMAGE_SIZE, IMAGE_SIZE))  # Resize to match scaler's expected input size
+# Function to load and preprocess the uploaded image
+def load_and_preprocess_image(image, model_type):
+    if model_type == "SVM":
+        target_size = (IMAGE_SIZE_SVM, IMAGE_SIZE_SVM)
+    elif model_type == "KNN":
+        target_size = (IMAGE_SIZE_KNN, IMAGE_SIZE_KNN)
+    else:  # CNN
+        target_size = (IMAGE_SIZE_CNN, IMAGE_SIZE_CNN)
+
+    img = load_img(image, target_size=target_size)  # Resize to match model's expected input size
     img_array = img_to_array(img)
     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
-    img_array = img_array.flatten().reshape(1, -1)  # Flatten the image for SVM input
+    img_array = img_array / 255.0  # Normalize to [0, 1]
+    
+    if model_type != "CNN":  # Flatten for KNN/SVM models
+        img_array = img_array.flatten().reshape(1, -1)  # Reshape to 1 sample with flattened image
+
     return img_array
 
-# Function to predict the class and confidence score for SVM
-def predict_svm(model, img_array, scaler):
-    img_array_scaled = scaler.transform(img_array)  # Scale the image array using the loaded scaler
-    predictions = model.predict_proba(img_array_scaled)  # Use predict_proba for SVM to get probabilities
+# Function to predict the class and confidence score
+def predict(model, img_array, model_type):
+    if model_type == "CNN":
+        predictions = model.predict(img_array)
+    else:
+        predictions = model.predict_proba(img_array)  # Use predict_proba for KNN/SVM to get probabilities
+
     predicted_class = class_names[np.argmax(predictions[0])]
     confidence = round(100 * np.max(predictions[0]), 2)  # Convert confidence to percentage and round
     return predicted_class, confidence
 
-# Function to load the SVM model and scaler
-def load_svm_model():
-    with open("svm_model.pkl", "rb") as f:
-        model = pickle.load(f)
-    with open("svm_scaler.pkl", "rb") as f:  # Load SVM scaler
-        scaler = pickle.load(f)
+# Function to load the selected model
+def load_model(model_choice):
+    if model_choice == "KNN":
+        with open("knn_model.pkl", "rb") as f:
+            model = pickle.load(f)
+        with open("knn_scaler.pkl", "rb") as f:  # Load KNN scaler
+            scaler = pickle.load(f)
+    elif model_choice == "SVM":
+        with open("svm_model.pkl", "rb") as f:
+            model = pickle.load(f)
+        with open("svm_scaler.pkl", "rb") as f:  # Load SVM scaler
+            scaler = pickle.load(f)
+    elif model_choice == "CNN":
+        with open("potato_pickle_final (1).pkl", "rb") as f:
+            data = pickle.load(f)
+            model = tf.keras.models.model_from_json(data["architecture"])
+            model.load_weights(data["weights"])
+        scaler = None  # No scaler for CNN
     return model, scaler
 
 # Enhanced UI
@@ -411,19 +439,27 @@ st.write("Welcome farmers! Upload a photo of your potato leaf and let our AI hel
 # File uploader for image input
 uploaded_file = st.file_uploader("Select an image of a potato leaf...", type=["jpg", "jpeg", "png"])
 
-# If an image is uploaded
-if uploaded_file is not None:
-    # Load the SVM model and scaler
-    model, scaler = load_svm_model()
+# Model selection option
+model_choice = st.selectbox("Choose a model for prediction", ["KNN", "SVM", "CNN"])
+
+# If an image is uploaded and model is selected
+if uploaded_file is not None and model_choice is not None:
+    # Load the selected model and scaler
+    model, scaler = load_model(model_choice)
 
     # Load and preprocess the uploaded image
     img = Image.open(uploaded_file).convert('RGB')
     st.image(img, caption="Uploaded Image", use_column_width=True)
     
-    img_array = load_and_preprocess_image_svm(uploaded_file)
+    # Load and preprocess the uploaded image
+    img_array = load_and_preprocess_image(uploaded_file, model_choice)
 
-    # Predict the class of the leaf disease using the SVM model
-    predicted_class, confidence = predict_svm(model, img_array, scaler)
+    # Scale the image array for KNN/SVM models
+    if model_choice in ["KNN", "SVM"]:
+        img_array = scaler.transform(img_array)  # Scale using the loaded scaler
+
+    # Predict the class of the leaf disease using the selected model
+    predicted_class, confidence = predict(model, img_array, model_choice)
 
     # Display the predicted class and confidence score
     st.markdown(f"### 🌿 Predicted Disease: **{predicted_class}**")
