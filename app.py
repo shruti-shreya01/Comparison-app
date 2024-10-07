@@ -373,12 +373,11 @@ import tensorflow as tf
 import numpy as np
 from tensorflow.keras.preprocessing.image import img_to_array, load_img
 from PIL import Image
-from sklearn.preprocessing import StandardScaler
+from skimage.transform import resize
 
 # Set the IMAGE_SIZE based on your model's training
 IMAGE_SIZE_CNN = 256  # Size for CNN model
-IMAGE_SIZE_KNN = 90   # Size for KNN model
-IMAGE_SIZE_SVM = 90   # Size for SVM model (adjusted to match 8100 features)
+IMAGE_SIZE_OTHER = 90  # Size for KNN and SVM models
 
 # Class names for the three conditions
 class_names = {0: "Early Blight", 1: "Late Blight", 2: "Healthy"}
@@ -387,16 +386,16 @@ class_names = {0: "Early Blight", 1: "Late Blight", 2: "Healthy"}
 def load_and_preprocess_image(image, model_type):
     if model_type == "CNN":
         img = load_img(image, target_size=(IMAGE_SIZE_CNN, IMAGE_SIZE_CNN))  # Resize for CNN
-    elif model_type == "KNN":
-        img = load_img(image, target_size=(IMAGE_SIZE_KNN, IMAGE_SIZE_KNN))  # Resize for KNN
-    elif model_type == "SVM":
-        img = load_img(image, target_size=(IMAGE_SIZE_SVM, IMAGE_SIZE_SVM))  # Resize for SVM
-    img_array = img_to_array(img)
-    img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
-    img_array = img_array / 255.0  # Normalize to [0, 1]
-
-    if model_type != "CNN":  # Flatten for KNN/SVM models
+        img_array = img_to_array(img)
+        img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
+        img_array = img_array / 255.0  # Normalize to [0, 1]
+    else:
+        img = Image.open(image).convert('RGB')
+        img_array = np.array(img)
+        img_array = resize(img_array, (IMAGE_SIZE_OTHER, IMAGE_SIZE_OTHER, 3))
         img_array = img_array.flatten().reshape(1, -1)  # Reshape to 1 sample with flattened image
+        if model_type == "SVM":
+            img_array = img_array[:, :70]  # Keep only the first 70 features for SVM
 
     return img_array
 
@@ -449,15 +448,12 @@ if uploaded_file is not None and model_choice is not None:
     # Load and preprocess the uploaded image
     img = Image.open(uploaded_file).convert('RGB')
     st.image(img, caption="Uploaded Image", use_column_width=True)
-
+    
     img_array = load_and_preprocess_image(uploaded_file, model_choice)
 
     # Scale the image array for KNN/SVM models
     if model_choice in ["KNN", "SVM"]:
-        if scaler is None:
-            st.error("Scaler not found for the selected model. Please ensure the scaler is correctly loaded.")
-        else:
-            img_array = scaler.transform(img_array)  # Scale using the loaded scaler
+        img_array = scaler.transform(img_array)  # Scale using the loaded scaler
 
     # Predict the class of the leaf disease using the selected model
     predicted_class, confidence = predict(model, img_array, model_choice)
