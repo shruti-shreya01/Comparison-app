@@ -415,18 +415,22 @@ def load_model(model_choice):
             model = pickle.load(f)
         with open("knn_scaler.pkl", "rb") as f:  # Load KNN scaler
             scaler = pickle.load(f)
+        pca = None  # No PCA for KNN
     elif model_choice == "SVM":
         with open("svm_model.pkl", "rb") as f:
             model = pickle.load(f)
         with open("svm_scaler.pkl", "rb") as f:  # Load SVM scaler
             scaler = pickle.load(f)
+        with open("svm_pca.pkl", "rb") as f:  # Load PCA if used during training
+            pca = pickle.load(f)
     elif model_choice == "CNN":
         with open("potato_pickle_final (1).pkl", "rb") as f:
             data = pickle.load(f)
             model = tf.keras.models.model_from_json(data["architecture"])
             model.load_weights(data["weights"])
         scaler = None  # No scaler for CNN
-    return model, scaler
+        pca = None  # No PCA for CNN
+    return model, scaler, pca
 
 # Enhanced UI
 st.markdown("<h1 style='text-align: center; color: green;'>🍃 Potato Leaf Health Check 🍃</h1>", unsafe_allow_html=True)
@@ -440,8 +444,8 @@ model_choice = st.selectbox("Choose a model for prediction", ["KNN", "SVM", "CNN
 
 # If an image is uploaded and model is selected
 if uploaded_file is not None and model_choice is not None:
-    # Load the selected model and scaler
-    model, scaler = load_model(model_choice)
+    # Load the selected model, scaler, and PCA
+    model, scaler, pca = load_model(model_choice)
 
     # Load and preprocess the uploaded image
     img = Image.open(uploaded_file).convert('RGB')
@@ -449,8 +453,10 @@ if uploaded_file is not None and model_choice is not None:
     
     img_array = load_and_preprocess_image(uploaded_file, model_choice)
 
-    # Scale the image array for KNN/SVM models
+    # Apply PCA and scaling for KNN/SVM models
     if model_choice in ["KNN", "SVM"]:
+        if pca is not None:  # Apply PCA to reduce dimensions to 70 if PCA was used
+            img_array = pca.transform(img_array)
         img_array = scaler.transform(img_array)  # Scale using the loaded scaler
 
     # Predict the class of the leaf disease using the selected model
