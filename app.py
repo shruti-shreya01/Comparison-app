@@ -156,18 +156,26 @@ def train_and_save_model():
     knn_model = KNeighborsClassifier(n_neighbors=5)
     knn_model.fit(X_train, y_train)
     
-    # Save model and scaler
+    # Save model and scaler separately
     with open('knn_model.pkl', 'wb') as f:
-        pickle.dump((knn_model, scaler), f)
+        pickle.dump(knn_model, f)
+    with open('scaler.pkl', 'wb') as f:
+        pickle.dump(scaler, f)
     
     return knn_model, scaler
 
 # Load model and scaler
 @st.cache_resource
 def load_model():
-    with open('knn_model.pkl', 'rb') as f:
-        knn_model, scaler = pickle.load(f)
-    return knn_model, scaler
+    try:
+        with open('knn_model.pkl', 'rb') as f:
+            knn_model = pickle.load(f)
+        with open('scaler.pkl', 'rb') as f:
+            scaler = pickle.load(f)
+        return knn_model, scaler
+    except FileNotFoundError:
+        st.error("Model files not found. Please train the model first.")
+        return None, None
 
 # Preprocess and predict
 def preprocess_and_predict(image, model, scaler):
@@ -190,33 +198,34 @@ def preprocess_and_predict(image, model, scaler):
 st.title('Potato Leaf Disease Classification (KNN)')
 
 # Check if model exists, if not, train and save it
-if not os.path.exists('knn_model.pkl'):
+if not os.path.exists('knn_model.pkl') or not os.path.exists('scaler.pkl'):
     with st.spinner('Training model... This may take a while.'):
         knn_model, scaler = train_and_save_model()
     st.success('Model trained and saved!')
 else:
     knn_model, scaler = load_model()
 
-# File uploader
-uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+if knn_model is not None and scaler is not None:
+    # File uploader
+    uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
 
-if uploaded_file is not None:
-    # Display the uploaded image
-    image = Image.open(uploaded_file)
-    st.image(image, caption='Uploaded Image.', use_column_width=True)
-    
-    # Make prediction
-    prediction, probabilities = preprocess_and_predict(image, knn_model, scaler)
-    
-    # Display results
-    class_names = ["Early Blight", "Late Blight", "Healthy"]
-    st.write(f"Prediction: {class_names[prediction]}")
-    st.write(f"Confidence: {probabilities[prediction]*100:.2f}%")
-    
-    # Display probabilities for all classes
-    st.write("Class Probabilities:")
-    for i, class_name in enumerate(class_names):
-        st.write(f"{class_name}: {probabilities[i]*100:.2f}%")
+    if uploaded_file is not None:
+        # Display the uploaded image
+        image = Image.open(uploaded_file)
+        st.image(image, caption='Uploaded Image.', use_column_width=True)
+        
+        # Make prediction
+        prediction, probabilities = preprocess_and_predict(image, knn_model, scaler)
+        
+        # Display results
+        class_names = ["Early Blight", "Late Blight", "Healthy"]
+        st.write(f"Prediction: {class_names[prediction]}")
+        st.write(f"Confidence: {probabilities[prediction]*100:.2f}%")
+        
+        # Display probabilities for all classes
+        st.write("Class Probabilities:")
+        for i, class_name in enumerate(class_names):
+            st.write(f"{class_name}: {probabilities[i]*100:.2f}%")
 
 # Add information about the model
 st.sidebar.title("About")
