@@ -63,7 +63,7 @@ if uploaded_file is not None:
     img_array = load_and_preprocess_image(uploaded_file)
 
     # # Predict the class of the leaf disease
-    # prediction = model.predict(img_array)
+    prediction = model.predict(img_array)
     # predicted_class = np.argmax(prediction, axis=1)[0]
     # confidence = np.max(prediction) * 100  # Confidence score in percentage
     # Predict the class of the leaf disease
