@@ -81,8 +81,8 @@ if uploaded_file is not None:
     disease_name = class_names.get(predicted_class, "Unknown")
     # Display the predicted class and confidence score
     st.markdown(f"### 🌿 Predicted Disease: **{disease_name}**")
-    st.write(f"Confidence Score: **{confidence:.2f}%**")
-    # st.write("Confidence Score:" confidence)
+    # st.write(f"Confidence Score: **{confidence:.2f}%**")
+    st.write("Confidence Score:" confidence)
 
     # Store results in session state
     st.session_state["prediction"] = predicted_class
@@ -125,7 +125,6 @@ st.sidebar.write("🌱 **Healthy:** No signs of disease detected.")
 
 st.sidebar.subheader("How It Works")
 st.sidebar.write("Upload a clear image of your potato leaf, and our AI will predict its health based on trained models.")
-
 
 
 
