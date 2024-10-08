@@ -94,96 +94,137 @@
 
 #knn
 import streamlit as st
-import pickle
-import tensorflow as tf
-import os
-from tensorflow.keras.preprocessing.image import img_to_array, load_img
-from PIL import Image, ImageOps
 import numpy as np
+from sklearn.feature_extraction.image import extract_patches_2d
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
+from skimage.feature import hog
+from skimage.color import rgb2gray
+import os
+import pickle
+from PIL import Image
 
-IMAGE_SIZE = 90
+# Load dataset chunks
+@st.cache_data
+def load_dataset_chunks(save_dir):
+    images = []
+    labels = []
+    for file in os.listdir(save_dir):
+        if file.endswith('.npz'):
+            data = np.load(os.path.join(save_dir, file))
+            images.append(data['images'])
+            labels.append(data['labels'])
+    
+    return np.concatenate(images), np.concatenate(labels)
 
-# Function to load and preprocess the uploaded image
-def load_and_preprocess_image(image):
-    img = load_img(image, target_size=(IMAGE_SIZE, IMAGE_SIZE))
-    img_array = img_to_array(img)
-    img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
-    img_array = img_array / 255.0  # Normalize to [0, 1]
-    return img_array
+# Extract HOG features
+def extract_hog_features(images):
+    hog_features = []
+    for image in images:
+        # Convert to grayscale
+        grayscale_image = rgb2gray(image)
+        
+        # Extract HOG features
+        features = hog(grayscale_image, 
+                       pixels_per_cell=(16, 16), 
+                       cells_per_block=(2, 2), 
+                       visualize=False)
+        hog_features.append(features)
+    
+    return np.array(hog_features)
 
-# Path to the pickle file
-file_path = "knn_model.pkl"
+# Train and save model
+@st.cache_resource
+def train_and_save_model():
+    # Load and preprocess data
+    X_original, y = load_dataset_chunks('dataset_chunks')
+    
+    # Extract HOG features
+    X_hog = extract_hog_features(X_original)
+    
+    # Split dataset
+    X_train, X_temp, y_train, y_temp = train_test_split(X_hog, y, test_size=0.4, random_state=42)
+    X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
+    
+    # Standardize features
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    
+    # Train KNN model
+    knn_model = KNeighborsClassifier(n_neighbors=5)
+    knn_model.fit(X_train, y_train)
+    
+    # Save model and scaler
+    with open('knn_model.pkl', 'wb') as f:
+        pickle.dump((knn_model, scaler), f)
+    
+    return knn_model, scaler
 
-# Check if file exists and load the model
-if os.path.exists(file_path):
-    with open(file_path, "rb") as f:
-        data = pickle.load(f)
-    # Reconstruct the model from the architecture
-    model = tf.keras.models.model_from_json(data["architecture"])
+# Load model and scaler
+@st.cache_resource
+def load_model():
+    with open('knn_model.pkl', 'rb') as f:
+        knn_model, scaler = pickle.load(f)
+    return knn_model, scaler
+
+# Preprocess and predict
+def preprocess_and_predict(image, model, scaler):
+    # Convert to numpy array
+    img_array = np.array(image)
+    
+    # Extract HOG features
+    hog_features = extract_hog_features([img_array])
+    
+    # Standardize features
+    X = scaler.transform(hog_features)
+    
+    # Predict
+    prediction = model.predict(X)
+    probabilities = model.predict_proba(X)
+    
+    return prediction[0], probabilities[0]
+
+# Streamlit app
+st.title('Potato Leaf Disease Classification (KNN)')
+
+# Check if model exists, if not, train and save it
+if not os.path.exists('knn_model.pkl'):
+    with st.spinner('Training model... This may take a while.'):
+        knn_model, scaler = train_and_save_model()
+    st.success('Model trained and saved!')
 else:
-    st.error(f"Model file not found at path: {file_path}")
-    st.stop()  # Stop execution if file is not found
+    knn_model, scaler = load_model()
 
-class_names = {0: "Early Blight", 1: "Late Blight", 2: "Healthy"}
-
-# Initialize session state variables
-if "prediction" not in st.session_state:
-    st.session_state["prediction"] = None
-if "confidence" not in st.session_state:
-    st.session_state["confidence"] = None
-
-# Streamlit app interface
-st.title("Potato Leaf Disease Classification")
-st.write("Upload an image of a potato leaf to classify the disease.")
-
-# File uploader for image input
-uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"], key="uploaded_file")
+# File uploader
+uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
-    # Load and preprocess the uploaded image
-    img_array = load_and_preprocess_image(uploaded_file)
-    
-    # Predict the class of the leaf disease
-    prediction = model.predict(img_array)
-    predicted_class = np.argmax(prediction[0])
-    confidence = round(100 * np.max(prediction[0]), 2)  # Updated confidence calculation
-    
-    # Store results in session state
-    st.session_state["prediction"] = predicted_class
-    st.session_state["confidence"] = confidence
-    
     # Display the uploaded image
-    st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
+    image = Image.open(uploaded_file)
+    st.image(image, caption='Uploaded Image.', use_column_width=True)
     
-    # Map predicted class to the disease name
-    disease_name = class_names.get(predicted_class, "Unknown")
+    # Make prediction
+    prediction, probabilities = preprocess_and_predict(image, knn_model, scaler)
     
-    # Log raw prediction
-    print("Raw Prediction:", prediction)
+    # Display results
+    class_names = ["Early Blight", "Late Blight", "Healthy"]
+    st.write(f"Prediction: {class_names[prediction]}")
+    st.write(f"Confidence: {probabilities[prediction]*100:.2f}%")
     
-    # Log predicted class and confidence
-    print(f"Predicted Class: {predicted_class}, Confidence: {confidence}")
-    
-    # Display the results in Streamlit
-    st.write(f"Predicted Disease: **{disease_name}**")
-    st.write(f"Confidence Score: **{confidence:.2f}%**")
+    # Display probabilities for all classes
+    st.write("Class Probabilities:")
+    for i, class_name in enumerate(class_names):
+        st.write(f"{class_name}: {probabilities[i]*100:.2f}%")
 
-# Use a button to rerun the app conditionally
-if st.button("Rerun"):
-    # Check if necessary state is initialized before rerunning
-    if st.session_state["prediction"] is not None and st.session_state["confidence"] is not None:
-        st.rerun()
-    else:
-        st.warning("Please upload an image first.")
-
+# Add information about the model
 st.sidebar.title("About")
-st.sidebar.info("This app is designed to help farmers and agronomists identify diseases in potato leaves using AI technology.")
-st.sidebar.subheader("About the Model")
-st.sidebar.write("This model classifies potato leaf diseases with high accuracy. The classes are:")
+st.sidebar.info("This app uses a K-Nearest Neighbors (KNN) model to classify potato leaf diseases.")
+st.sidebar.subheader("Classes")
 st.sidebar.write("- Early Blight")
 st.sidebar.write("- Late Blight")
 st.sidebar.write("- Healthy")
-
 
 
 
