@@ -17,7 +17,7 @@ def load_and_preprocess_image(image):
     return img_array
 
 # Path to the pickle file
-file_path = "potato_pickle_final (1).pkl"
+file_path = "potato_pickle.pkl"
 
 # Check if file exists and load the model
 if os.path.exists(file_path):
@@ -37,13 +37,6 @@ if "prediction" not in st.session_state:
 if "confidence" not in st.session_state:
     st.session_state["confidence"] = None
 
-# Function to predict class and confidence
-def predict(model, img_array):
-    predictions = model.predict(img_array)
-    predicted_class = np.argmax(predictions[0])
-    confidence = round(100 * np.max(predictions[0]), 2)
-    return predicted_class, confidence
-
 # Streamlit app interface
 st.title("Potato Leaf Disease Classification")
 st.write("Upload an image of a potato leaf to classify the disease.")
@@ -55,8 +48,10 @@ if uploaded_file is not None:
     # Load and preprocess the uploaded image
     img_array = load_and_preprocess_image(uploaded_file)
     
-    # Predict the class and confidence of the leaf disease
-    predicted_class, confidence = predict(model, img_array)
+    # Predict the class of the leaf disease
+    prediction = model.predict(img_array)
+    predicted_class = np.argmax(prediction[0])
+    confidence = round(100 * np.max(prediction[0]), 2)  # Updated confidence calculation
     
     # Store results in session state
     st.session_state["prediction"] = predicted_class
@@ -67,6 +62,12 @@ if uploaded_file is not None:
     
     # Map predicted class to the disease name
     disease_name = class_names.get(predicted_class, "Unknown")
+    
+    # Log raw prediction
+    print("Raw Prediction:", prediction)
+    
+    # Log predicted class and confidence
+    print(f"Predicted Class: {predicted_class}, Confidence: {confidence}")
     
     # Display the results in Streamlit
     st.write(f"Predicted Disease: **{disease_name}**")
