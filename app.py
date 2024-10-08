@@ -82,7 +82,7 @@ if uploaded_file is not None:
     # Display the predicted class and confidence score
     st.markdown(f"### 🌿 Predicted Disease: **{disease_name}**")
     # st.write(f"Confidence Score: **{confidence:.2f}%**")
-    st.write("Confidence Score:" confidence)
+    st.write("Confidence Score:", confidence)
 
     # Store results in session state
     st.session_state["prediction"] = predicted_class
