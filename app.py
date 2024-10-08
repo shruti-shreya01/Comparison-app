@@ -17,13 +17,12 @@ def load_and_preprocess_image(image):
     return img_array
 
 # Path to the pickle file
-file_path = "potato_pickle_final (1).pkl"
+file_path = "potato_pickle.pkl"
 
 # Check if file exists and load the model
 if os.path.exists(file_path):
     with open(file_path, "rb") as f:
         data = pickle.load(f)
-
     # Reconstruct the model from the architecture
     model = tf.keras.models.model_from_json(data["architecture"])
 else:
@@ -38,6 +37,13 @@ if "prediction" not in st.session_state:
 if "confidence" not in st.session_state:
     st.session_state["confidence"] = None
 
+# Function to predict class and confidence
+def predict(model, img_array):
+    predictions = model.predict(img_array)
+    predicted_class = np.argmax(predictions[0])
+    confidence = round(100 * np.max(predictions[0]), 2)
+    return predicted_class, confidence
+
 # Streamlit app interface
 st.title("Potato Leaf Disease Classification")
 st.write("Upload an image of a potato leaf to classify the disease.")
@@ -48,33 +54,23 @@ uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png
 if uploaded_file is not None:
     # Load and preprocess the uploaded image
     img_array = load_and_preprocess_image(uploaded_file)
-
-    # Predict the class of the leaf disease
-    prediction = model.predict(img_array)
-    predicted_class = np.argmax(prediction, axis=1)[0]
-    confidence = np.max(prediction)  # Confidence score
-
+    
+    # Predict the class and confidence of the leaf disease
+    predicted_class, confidence = predict(model, img_array)
+    
     # Store results in session state
     st.session_state["prediction"] = predicted_class
     st.session_state["confidence"] = confidence
-
+    
     # Display the uploaded image
     st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
-
+    
     # Map predicted class to the disease name
     disease_name = class_names.get(predicted_class, "Unknown")
-
-    # Log raw prediction
-    print("Raw Prediction:", prediction)  # Log raw prediction
-    # Log predicted class and confidence
-    print(f"Predicted Class: {predicted_class}, Confidence: {confidence}")
-
+    
     # Display the results in Streamlit
     st.write(f"Predicted Disease: **{disease_name}**")
-    st.write(f"Confidence Score: **{confidence:.2f}**")
-
-
-
+    st.write(f"Confidence Score: **{confidence:.2f}%**")
 
 # Use a button to rerun the app conditionally
 if st.button("Rerun"):
@@ -86,7 +82,6 @@ if st.button("Rerun"):
 
 st.sidebar.title("About")
 st.sidebar.info("This app is designed to help farmers and agronomists identify diseases in potato leaves using AI technology.")
-
 st.sidebar.subheader("About the Model")
 st.sidebar.write("This model classifies potato leaf diseases with high accuracy. The classes are:")
 st.sidebar.write("- Early Blight")
